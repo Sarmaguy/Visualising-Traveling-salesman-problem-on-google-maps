@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, send_from_directory
 from scipy.spatial.distance import squareform
 from scipy.optimize import linear_sum_assignment
+from flask import render_template
 import numpy as np
 import os
 
@@ -52,7 +53,7 @@ def solve_tsp_route():
 
 @app.route('/')
 def serve_home():
-    return send_from_directory(app.template_folder, 'index.html', api_key = GOOGLE_MAPS_API_KEY)
+    return render_template('index.html', api_key=GOOGLE_MAPS_API_KEY)
 
 
 if __name__ == '__main__':

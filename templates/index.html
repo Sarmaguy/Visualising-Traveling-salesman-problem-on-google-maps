@@ -4,7 +4,7 @@
     <title>TSP Map</title>
     <script src="{{api_key}}"></script>
     <script>
-        let map, markers = [], coordinates = [];
+        let map, markers = [], coordinates = [], polylines = [];
 
         // Initialize the map
         function initMap() {
@@ -94,79 +94,86 @@
         }
 
         // Function to display the optimized route
-        // Function to display the complete optimized TSP route
-            function displayRoute(route) {
-                const tspRoute = route.map(idx => coordinates[idx]);
-                const directionsService = new google.maps.DirectionsService();
-                const directionsRenderer = new google.maps.DirectionsRenderer({
-                    suppressMarkers: true,
-                    polylineOptions: {
-                        strokeColor: "#FF0000",
-                        strokeOpacity: 1.0,
-                        strokeWeight: 2,
-                    },
-                });
+        function displayRoute(route) {
+            const tspRoute = route.map(idx => coordinates[idx]);
+            const directionsService = new google.maps.DirectionsService();
 
-                directionsRenderer.setMap(map);
+            // Include the last-to-first segment to complete the loop
+            const routeSegments = tspRoute.map((location, index) => {
+                if (index < tspRoute.length - 1) {
+                    return {
+                        origin: location,
+                        destination: tspRoute[index + 1],
+                    };
+                } else {
+                    return {
+                        origin: tspRoute[index],
+                        destination: tspRoute[0], // Return to the starting point
+                    };
+                }
+            });
 
-                // Include the last-to-first segment to complete the loop
-                const routeSegments = tspRoute.map((location, index) => {
-                    if (index < tspRoute.length - 1) {
-                        return {
-                            origin: location,
-                            destination: tspRoute[index + 1],
-                        };
-                    } else {
-                        return {
-                            origin: tspRoute[index],
-                            destination: tspRoute[0], // Return to the starting point
-                        };
-                    }
-                });
-
-                // Sequentially request and display each segment
-                function displaySegment(segmentIndex) {
-                    if (segmentIndex >= routeSegments.length) {
-                        return; // Base case: All segments processed
-                    }
-
-                    const segment = routeSegments[segmentIndex];
-                    directionsService.route(
-                        {
-                            origin: segment.origin,
-                            destination: segment.destination,
-                            travelMode: "DRIVING",
-                        },
-                        (result, status) => {
-                            if (status === "OK") {
-                                const polyline = new google.maps.Polyline({
-                                    path: result.routes[0].overview_path,
-                                    geodesic: true,
-                                    strokeColor: "#512DA8",
-                                    strokeOpacity: 0.8,
-                                    strokeWeight: 2,
-                                });
-                                polyline.setMap(map);
-
-                                // Proceed to the next segment
-                                displaySegment(segmentIndex + 1);
-                            } else {
-                                console.error("Directions request failed: " + status);
-                            }
-                        }
-                    );
+            // Sequentially request and display each segment
+            function displaySegment(segmentIndex) {
+                if (segmentIndex >= routeSegments.length) {
+                    return; // Base case: All segments processed
                 }
 
-                // Start processing segments from the first
-                displaySegment(0);
+                const segment = routeSegments[segmentIndex];
+                directionsService.route(
+                    {
+                        origin: segment.origin,
+                        destination: segment.destination,
+                        travelMode: "DRIVING",
+                    },
+                    (result, status) => {
+                        if (status === "OK") {
+                            const polyline = new google.maps.Polyline({
+                                path: result.routes[0].overview_path,
+                                geodesic: true,
+                                strokeColor: "#FF0000",
+                                strokeOpacity: 1.0,
+                                strokeWeight: 2,
+                            });
+                            polyline.setMap(map);
+                            polylines.push(polyline);
+
+                            // Proceed to the next segment
+                            displaySegment(segmentIndex + 1);
+                        } else {
+                            console.error("Directions request failed: " + status);
+                        }
+                    }
+                );
             }
 
+            // Start processing segments from the first
+            displaySegment(0);
+        }
+
+        // Function to reset map
+        function resetMap() {
+            // Clear markers from the map
+            markers.forEach(marker => marker.setMap(null));
+            markers = [];
+
+            // Clear polylines from the map
+            polylines.forEach(polyline => polyline.setMap(null));
+            polylines = [];
+
+            // Clear coordinates
+            coordinates = [];
+
+            // Clear distance matrix display
+            document.getElementById("distanceMatrix").innerHTML = "";
+        }
     </script>
 </head>
 <body onload="initMap()">
     <h1>Traveling Salesman Problem Map</h1>
     <div id="map" style="height: 500px; width: 100%;"></div>
     <button onclick="calculateDistances()">Solve TSP</button>
+    <button onclick="resetMap()">Reset</button>
     <div id="distanceMatrix"></div>
 </body>
 </html>
